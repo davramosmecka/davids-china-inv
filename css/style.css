@@ -79,7 +79,8 @@ h1 { font-size: 21px; font-weight: 600; }
 .inv-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 13px 15px; }
 .inv-card.low { border-left: 3px solid var(--amber); }
 .inv-card.out { border-left: 3px solid var(--red); }
-.inv-card-top { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 2px; }
+.inv-card-top { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 2px; gap: 8px; }
+.inv-card-top-inner { flex: 1; min-width: 0; }
 .inv-card-name { font-size: 13px; font-weight: 600; }
 .inv-card-cat { font-size: 11px; color: var(--text3); margin-bottom: 10px; }
 .inv-stock { font-size: 26px; font-weight: 700; line-height: 1; margin-bottom: 6px; }
@@ -237,4 +238,77 @@ h1 { font-size: 21px; font-weight: 600; }
   .stats-row { grid-template-columns: repeat(2,1fr); }
   .form-row { flex-direction: column; }
   .modal-wide { width: 96vw; }
+}
+
+/* ── Photos ── */
+.inv-card-thumb {
+  width: 52px;
+  height: 52px;
+  border-radius: var(--radius-sm);
+  object-fit: cover;
+  border: 1px solid var(--border);
+  flex-shrink: 0;
+  cursor: pointer;
+}
+.inv-card-thumb:hover { opacity: 0.85; }
+.inv-card-top-inner { flex: 1; min-width: 0; }
+
+.photo-upload-area {
+  display: flex;
+  gap: 14px;
+  align-items: flex-start;
+  padding: 12px;
+  background: var(--surface2);
+  border-radius: var(--radius-sm);
+  margin-top: 4px;
+}
+.photo-preview-wrap {
+  width: 80px;
+  height: 80px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  overflow: hidden;
+  flex-shrink: 0;
+  background: var(--surface);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.photo-preview-wrap img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.no-photo-placeholder {
+  font-size: 11px;
+  color: var(--text3);
+  text-align: center;
+}
+.photo-upload-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  justify-content: center;
+}
+.photo-upload-btn { cursor: pointer; }
+.photo-hint { font-size: 11px; color: var(--text3); line-height: 1.4; }
+
+/* Lightbox */
+.lightbox-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.75);
+  z-index: 200;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+.lightbox-overlay.open { display: flex; }
+.lightbox-overlay img {
+  max-width: 90vw;
+  max-height: 85vh;
+  border-radius: var(--radius);
+  object-fit: contain;
+  box-shadow: 0 8px 40px rgba(0,0,0,0.4);
 }
