@@ -5,12 +5,24 @@ let sheetUrl = '';
 let syncInterval = null;
 let syncReady = false;
 
-function loadSheetUrl() {
+async function loadSheetUrl() {
   sheetUrl = localStorage.getItem(STORAGE_KEY)
     || (typeof HARDCODED_SHEET_URL !== 'undefined' ? HARDCODED_SHEET_URL : '');
   if (sheetUrl) {
     const el = document.getElementById('sheet-url');
     if (el) el.value = sheetUrl;
+    const dirtyKey = 'mecka_dirty_' + (typeof HUB_ID !== 'undefined' ? HUB_ID : 'default');
+    if (localStorage.getItem(dirtyKey) === '1') {
+      await pushToSheet();
+      // If push failed, dirty flag is still set — skip pull to preserve local edits
+      if (localStorage.getItem(dirtyKey) === '1') {
+        setSyncStatus('error', 'Offline — using local cache');
+        syncReady = true;
+        renderAll();
+        startAutoSync();
+        return;
+      }
+    }
     pullFromSheet();
   } else {
     setSyncStatus('disconnected', 'Not connected');
@@ -93,6 +105,7 @@ async function pushToSheet() {
     });
     const json = await res.json();
     if (json.status === 'ok') {
+      localStorage.removeItem('mecka_dirty_' + (typeof HUB_ID !== 'undefined' ? HUB_ID : 'default'));
       setSyncStatus('connected', 'Saved ' + new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
     } else throw new Error(json.message);
   } catch(e) {

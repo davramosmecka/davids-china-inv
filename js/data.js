@@ -79,9 +79,18 @@ function loadState() {
   }
 }
 
+let _pushTimer = null;
 function saveState() {
   try {
-    localStorage.setItem('mecka_' + (typeof HUB_ID !== 'undefined' ? HUB_ID : 'default'), JSON.stringify({ inventory, orders, log: txLog, people, nextId, nextOrderId, kits: KITS }));
+    const hub = typeof HUB_ID !== 'undefined' ? HUB_ID : 'default';
+    localStorage.setItem('mecka_' + hub, JSON.stringify({ inventory, orders, log: txLog, people, nextId, nextOrderId, kits: KITS }));
+    if (typeof syncReady !== 'undefined' && syncReady) {
+      localStorage.setItem('mecka_dirty_' + hub, '1');
+      if (typeof pushToSheet === 'function') {
+        clearTimeout(_pushTimer);
+        _pushTimer = setTimeout(pushToSheet, 500);
+      }
+    }
   } catch(e) {}
 }
 
