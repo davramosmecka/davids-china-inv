@@ -74,8 +74,13 @@ function writeInventory(inventory) {
   const sheet = getOrCreate('Inventory');
   sheet.clearContents();
   if (!inventory.length) return;
-  const headers = ['id','name','cat','qty','threshold'];
-  const rows = [headers, ...inventory.map(i => headers.map(h => i[h] !== undefined && i[h] !== null ? i[h] : ''))];
+  const headers = ['id','name','cat','qty','threshold','photo'];
+  const rows = [headers, ...inventory.map(i => headers.map(h => {
+    const val = i[h];
+    if (val === undefined || val === null) return '';
+    // photo is now a Drive URL (short string) — safe to store directly
+    return String(val);
+  }))];
   sheet.getRange(1, 1, rows.length, headers.length).setValues(rows);
   styleHeader(sheet, headers.length);
   inventory.forEach((item, idx) => {
