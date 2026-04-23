@@ -4,6 +4,11 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Mecka AI — Shenzhen</title>
+  <script>
+    if (localStorage.getItem('mecka_auth') !== '1') {
+      location.replace('login.html');
+    }
+  </script>
   <link rel="stylesheet" href="css/hub.css">
 </head>
 <body>
