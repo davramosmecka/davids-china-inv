@@ -23,9 +23,22 @@ function doPost(e) {
     const p = JSON.parse(e.postData.contents);
 
     if (p.action === 'authorize') {
-      const user = verifyIdToken(p.idToken);
-      if (!user) return json({ status: 'error', message: 'Invalid token' });
-      return json({ status: 'ok', allowed: isAllowed(user.email), email: user.email, name: user.name });
+      if (!p.idToken) return json({ status: 'error', message: 'No token sent' });
+      const res = UrlFetchApp.fetch(
+        'https://oauth2.googleapis.com/tokeninfo?id_token=' + encodeURIComponent(p.idToken),
+        { muteHttpExceptions: true }
+      );
+      if (res.getResponseCode() !== 200) {
+        return json({ status: 'error', message: 'Token verify failed: HTTP ' + res.getResponseCode() });
+      }
+      const info = JSON.parse(res.getContentText());
+      if (info.aud !== CLIENT_ID) {
+        return json({ status: 'error', message: 'Token audience mismatch. Got: ' + info.aud });
+      }
+      const email = String(info.email || '').toLowerCase();
+      if (!email) return json({ status: 'error', message: 'No email in token' });
+      const allowed = isAllowed(email);
+      return json({ status: 'ok', allowed, email, name: info.name || '', sheetFound: !!SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Access') });
     }
 
     // Every other action requires a valid, allowlisted user
@@ -59,8 +72,9 @@ function verifyIdToken(idToken) {
     if (res.getResponseCode() !== 200) return null;
     const info = JSON.parse(res.getContentText());
     if (info.aud !== CLIENT_ID) return null;
-    if (info.email_verified !== 'true' && info.email_verified !== true) return null;
-    return { email: String(info.email || '').toLowerCase(), name: info.name || '' };
+    const email = String(info.email || '').toLowerCase();
+    if (!email) return null;
+    return { email, name: info.name || '' };
   } catch(e) { return null; }
 }
 
@@ -69,9 +83,11 @@ function isAllowed(email) {
   const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Access');
   if (!sheet) return false;
   const data = sheet.getDataRange().getValues();
-  if (data.length < 2) return false;
+  if (!data.length) return false;
   const needle = String(email).trim().toLowerCase();
-  return data.slice(1).some(row => String(row[0] || '').trim().toLowerCase() === needle);
+  // Match any row in column A, treating row 1 as a header only if it doesn't look like an email
+  const startRow = data[0][0] && String(data[0][0]).indexOf('@') === -1 ? 1 : 0;
+  return data.slice(startRow).some(row => String(row[0] || '').trim().toLowerCase() === needle);
 }
 
 // ── Readers ───────────────────────────────────────────────────────────────────

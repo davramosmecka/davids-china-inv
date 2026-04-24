@@ -38,7 +38,13 @@ async function onGoogleCredential(response) {
       hideAuthScreen();
       onAuthSuccess();
     } else {
-      showAuthError('Access denied for ' + pre.email + '. Ask David to add your email.');
+      let reason;
+      if (json.status === 'ok' && json.allowed === false) {
+        reason = pre.email + ' is not on the allowlist' + (json.sheetFound === false ? ' (Access tab not found!)' : '');
+      } else {
+        reason = json.message || 'Unknown error';
+      }
+      showAuthError(reason);
       if (typeof google !== 'undefined' && google.accounts) google.accounts.id.disableAutoSelect();
     }
   } catch(e) {
