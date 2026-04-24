@@ -1,26 +1,39 @@
 // ════════════════════════════════════════════════════════════════════
-// Mecka AI — Inventory Apps Script v3
-// Supports: read (pull on load) + sync (push on change)
+// David's China Inv — Apps Script (auth-gated)
 // ════════════════════════════════════════════════════════════════════
+// Allowlist lives in a sheet named "Access" with column A header "email"
+// Add a new row in that sheet to grant access — no redeploy needed.
 //
-// SETUP — same for every hub, each hub gets its own Sheet:
-// 1. Create a Google Sheet (tabs are created automatically on first sync)
-// 2. Extensions → Apps Script → paste this entire file → Save
-// 3. Deploy → New deployment → Web app
-//    Execute as: Me  |  Who has access: Anyone
-// 4. Copy the Web App URL → paste into that hub's Settings page
+// Setup:
+// 1. Paste this whole file into Extensions → Apps Script
+// 2. Save. Deploy → Manage deployments → pencil → Version: New version → Deploy
+// 3. Create an "Access" tab with header "email" and one row per allowed email
 // ════════════════════════════════════════════════════════════════════
+
+const CLIENT_ID = '659988920387-5pn2hcd55sf4qsag2ra52qj58qdmm7tb.apps.googleusercontent.com';
 
 function doGet(e) {
   const action = e && e.parameter && e.parameter.action;
-  if (action === 'ping') return json({ status: 'ok', message: 'Mecka connected' });
-  if (action === 'read') return json(readAll());
+  if (action === 'ping') return json({ status: 'ok', message: 'Connected' });
   return json({ status: 'ok' });
 }
 
 function doPost(e) {
   try {
     const p = JSON.parse(e.postData.contents);
+
+    if (p.action === 'authorize') {
+      const user = verifyIdToken(p.idToken);
+      if (!user) return json({ status: 'error', message: 'Invalid token' });
+      return json({ status: 'ok', allowed: isAllowed(user.email), email: user.email, name: user.name });
+    }
+
+    // Every other action requires a valid, allowlisted user
+    const user = verifyIdToken(p.idToken);
+    if (!user) return json({ status: 'error', message: 'Invalid or expired token' });
+    if (!isAllowed(user.email)) return json({ status: 'error', message: 'Not authorized: ' + user.email });
+
+    if (p.action === 'read') return json(readAll());
     if (p.action === 'sync') {
       writeInventory(p.inventory || []);
       writeOrders(p.orders || []);
@@ -35,6 +48,33 @@ function doPost(e) {
   }
 }
 
+// ── Auth helpers ──────────────────────────────────────────────────────────────
+function verifyIdToken(idToken) {
+  if (!idToken) return null;
+  try {
+    const res = UrlFetchApp.fetch(
+      'https://oauth2.googleapis.com/tokeninfo?id_token=' + encodeURIComponent(idToken),
+      { muteHttpExceptions: true }
+    );
+    if (res.getResponseCode() !== 200) return null;
+    const info = JSON.parse(res.getContentText());
+    if (info.aud !== CLIENT_ID) return null;
+    if (info.email_verified !== 'true' && info.email_verified !== true) return null;
+    return { email: String(info.email || '').toLowerCase(), name: info.name || '' };
+  } catch(e) { return null; }
+}
+
+function isAllowed(email) {
+  if (!email) return false;
+  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Access');
+  if (!sheet) return false;
+  const data = sheet.getDataRange().getValues();
+  if (data.length < 2) return false;
+  const needle = String(email).trim().toLowerCase();
+  return data.slice(1).some(row => String(row[0] || '').trim().toLowerCase() === needle);
+}
+
+// ── Readers ───────────────────────────────────────────────────────────────────
 function readAll() {
   return {
     status: 'ok',
@@ -70,6 +110,7 @@ function readPeople() {
   return data.slice(1).map(row => String(row[0])).filter(Boolean);
 }
 
+// ── Writers ───────────────────────────────────────────────────────────────────
 function writeInventory(inventory) {
   const sheet = getOrCreate('Inventory');
   sheet.clearContents();
@@ -78,7 +119,6 @@ function writeInventory(inventory) {
   const rows = [headers, ...inventory.map(i => headers.map(h => {
     const val = i[h];
     if (val === undefined || val === null) return '';
-    // photo is now a Drive URL (short string) — safe to store directly
     return String(val);
   }))];
   sheet.getRange(1, 1, rows.length, headers.length).setValues(rows);
@@ -121,7 +161,7 @@ function writeLog(log) {
   const sheet = getOrCreate('Log');
   sheet.clearContents();
   if (!log.length) return;
-  const headers = ['time','type','name','qty','note'];
+  const headers = ['time','type','name','qty','who','note'];
   const rows = [headers, ...log.map(l => headers.map(h => l[h] !== undefined ? l[h] : ''))];
   sheet.getRange(1, 1, rows.length, headers.length).setValues(rows);
   styleHeader(sheet, headers.length);
@@ -148,6 +188,7 @@ function writeKits(kits) {
   sheet.autoResizeColumns(1, rows[0].length);
 }
 
+// ── Utilities ─────────────────────────────────────────────────────────────────
 function getOrCreate(name) {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   return ss.getSheetByName(name) || ss.insertSheet(name);

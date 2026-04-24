@@ -123,9 +123,10 @@ function availableQty(itemId) {
 
 function addTx(type, name, qty, note) {
   const now = new Date();
+  const who = (typeof currentUser !== 'undefined' && currentUser && currentUser.email) ? currentUser.email : '';
   txLog.unshift({
     time: now.toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }),
-    type, name, qty, note: note || ''
+    type, name, qty, note: note || '', who
   });
   if (txLog.length > 600) txLog = txLog.slice(0, 600);
   saveState();

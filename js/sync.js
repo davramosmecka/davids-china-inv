@@ -53,9 +53,14 @@ function clearSheetUrl() {
 // ── PULL: load data from Sheet into app on startup ────────────────────────────
 async function pullFromSheet() {
   if (!sheetUrl) return;
+  if (typeof currentUser === 'undefined' || !currentUser) { setSyncStatus('error', 'Not signed in'); return; }
   setSyncStatus('syncing', 'Loading data…');
   try {
-    const res = await fetch(sheetUrl + '?action=read&t=' + Date.now());
+    const res = await fetch(sheetUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain' },
+      body: JSON.stringify({ action: 'read', idToken: currentUser.idToken })
+    });
     const json = await res.json();
     if (json.status !== 'ok') throw new Error(json.message || 'Bad response');
 
@@ -96,12 +101,13 @@ async function pullFromSheet() {
 // ── PUSH: send current state to Sheet ────────────────────────────────────────
 async function pushToSheet() {
   if (!sheetUrl) return;
+  if (typeof currentUser === 'undefined' || !currentUser) { setSyncStatus('error', 'Not signed in'); return; }
   setSyncStatus('syncing', 'Saving…');
   try {
     const res = await fetch(sheetUrl, {
       method: 'POST',
       headers: { 'Content-Type': 'text/plain' },
-      body: JSON.stringify({ action: 'sync', inventory, orders, log: txLog.slice(0, 300), people, kits: KITS })
+      body: JSON.stringify({ action: 'sync', idToken: currentUser.idToken, inventory, orders, log: txLog.slice(0, 300), people, kits: KITS })
     });
     const json = await res.json();
     if (json.status === 'ok') {

@@ -563,7 +563,7 @@ function removePerson(i) {
 function renderLog() {
   const tbody = document.getElementById('log-body');
   if (!txLog.length) {
-    tbody.innerHTML = '<tr><td colspan="5" style="color:var(--text3);padding:1rem 13px;">No transactions yet.</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="6" style="color:var(--text3);padding:1rem 13px;">No transactions yet.</td></tr>';
     return;
   }
   tbody.innerHTML = txLog.map(l => {
@@ -571,11 +571,13 @@ function renderLog() {
     if (l.type === 'in') { cls = 'log-in'; label = 'IN'; }
     else if (l.type === 'reserve') { cls = 'log-reserve'; label = 'RESERVE'; }
     else if (l.type === 'fulfill') { cls = 'log-fulfill'; label = 'FULFILL'; }
+    const who = l.who ? String(l.who).split('@')[0] : '';
     return `<tr>
       <td style="color:var(--text3);">${l.time}</td>
       <td class="${cls}">${label}</td>
       <td>${l.name}</td>
       <td>${l.qty}</td>
+      <td style="color:var(--text2);">${who}</td>
       <td style="color:var(--text3);">${l.note}</td>
     </tr>`;
   }).join('');
@@ -799,7 +801,5 @@ function renderAll() {
 }
 
 // ── Init ──────────────────────────────────────────────────────────────────────
-loadState();
-loadSheetUrl();
-// Note: renderAll() is called by sync.js after data loads from Sheet.
-// If no Sheet is connected, sync.js calls renderAll() immediately.
+// Initialization is driven by auth.js → onAuthSuccess() after Google sign-in.
+// renderAll() is then called by sync.js after data loads from Sheet.
