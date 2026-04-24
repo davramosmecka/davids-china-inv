@@ -61,6 +61,12 @@ function doPost(e) {
   }
 }
 
+// ── Run this once from the editor to grant outbound-HTTP permission ──────────
+function authorizePermissions() {
+  UrlFetchApp.fetch('https://oauth2.googleapis.com/tokeninfo?id_token=dummy', { muteHttpExceptions: true });
+  SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Access');
+}
+
 // ── Auth helpers ──────────────────────────────────────────────────────────────
 function verifyIdToken(idToken) {
   if (!idToken) return null;
