@@ -127,7 +127,28 @@ async function syncNow() {
 
 function startAutoSync() {
   if (syncInterval) clearInterval(syncInterval);
-  syncInterval = setInterval(pushToSheet, 30000);
+  syncInterval = setInterval(autoSyncTick, 15000);
+  // Also refresh when the tab regains focus so users see updates fast after switching back
+  if (!window._autoSyncFocusBound) {
+    window._autoSyncFocusBound = true;
+    window.addEventListener('focus', () => { if (sheetUrl && currentUser) autoSyncTick(); });
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible' && sheetUrl && currentUser) autoSyncTick();
+    });
+  }
+}
+
+// Each tick: push if there are pending local edits, otherwise pull fresh data.
+// This keeps every signed-in client converging on the Sheet without trampling unsaved edits.
+function autoSyncTick() {
+  if (!sheetUrl) return;
+  if (typeof currentUser === 'undefined' || !currentUser) return;
+  const dirtyKey = 'mecka_dirty_' + (typeof HUB_ID !== 'undefined' ? HUB_ID : 'default');
+  if (localStorage.getItem(dirtyKey) === '1') {
+    pushToSheet();
+  } else {
+    pullFromSheet();
+  }
 }
 
 // ── Rebuild helpers (Sheet stores flat rows) ──────────────────────────────────
