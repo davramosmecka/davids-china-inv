@@ -50,6 +50,18 @@ function clearSheetUrl() {
   if (r) r.style.display = 'none';
 }
 
+function isAuthError(json) {
+  if (!json || json.status !== 'error' || !json.message) return false;
+  const m = String(json.message).toLowerCase();
+  return m.includes('token') || m.includes('not authorized') || m.includes('expired');
+}
+
+function handleSessionExpired() {
+  setSyncStatus('error', 'Session expired — signing out');
+  if (syncInterval) { clearInterval(syncInterval); syncInterval = null; }
+  if (typeof signOut === 'function') signOut();
+}
+
 // ── PULL: load data from Sheet into app on startup ────────────────────────────
 async function pullFromSheet() {
   if (!sheetUrl) return;
@@ -62,7 +74,10 @@ async function pullFromSheet() {
       body: JSON.stringify({ action: 'read', idToken: currentUser.idToken })
     });
     const json = await res.json();
-    if (json.status !== 'ok') throw new Error(json.message || 'Bad response');
+    if (json.status !== 'ok') {
+      if (isAuthError(json)) { handleSessionExpired(); return; }
+      throw new Error(json.message || 'Bad response');
+    }
 
     if (json.inventory && json.inventory.length) {
       inventory = json.inventory.map(item => ({
@@ -113,6 +128,8 @@ async function pushToSheet() {
     if (json.status === 'ok') {
       localStorage.removeItem('mecka_dirty_' + (typeof HUB_ID !== 'undefined' ? HUB_ID : 'default'));
       setSyncStatus('connected', 'Saved ' + new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
+    } else if (isAuthError(json)) {
+      handleSessionExpired(); return;
     } else throw new Error(json.message);
   } catch(e) {
     setSyncStatus('error', 'Save failed');
