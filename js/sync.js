@@ -50,13 +50,24 @@ function clearSheetUrl() {
   if (r) r.style.display = 'none';
 }
 
+// Match only the exact auth-error message templates emitted by the Apps Script.
+// (Earlier substring matching on "token" / "expired" / "not authorized" caused
+// false positives that signed users out on unrelated errors.)
 function isAuthError(json) {
   if (!json || json.status !== 'error' || !json.message) return false;
-  const m = String(json.message).toLowerCase();
-  return m.includes('token') || m.includes('not authorized') || m.includes('expired');
+  const m = String(json.message);
+  return m.startsWith('Invalid or expired token')
+      || m.startsWith('Not authorized:')
+      || m.startsWith('Token verify failed')
+      || m.startsWith('No token sent')
+      || m.startsWith('No email in token')
+      || m.startsWith('Token audience mismatch');
 }
 
+let _sessionExpiredHandled = false;
 function handleSessionExpired() {
+  if (_sessionExpiredHandled) return;
+  _sessionExpiredHandled = true;
   setSyncStatus('error', 'Session expired — signing out');
   if (syncInterval) { clearInterval(syncInterval); syncInterval = null; }
   if (typeof signOut === 'function') signOut();
