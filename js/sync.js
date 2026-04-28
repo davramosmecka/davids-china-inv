@@ -66,6 +66,9 @@ function handleSessionExpired() {
 async function pullFromSheet() {
   if (!sheetUrl) return;
   if (typeof currentUser === 'undefined' || !currentUser) { setSyncStatus('error', 'Not signed in'); return; }
+  const dirtyKey = 'mecka_dirty_' + (typeof HUB_ID !== 'undefined' ? HUB_ID : 'default');
+  // Don't pull if there are pending local edits — push will run instead
+  if (localStorage.getItem(dirtyKey) === '1') return;
   setSyncStatus('syncing', 'Loading data…');
   try {
     const res = await fetch(sheetUrl, {
@@ -77,6 +80,13 @@ async function pullFromSheet() {
     if (json.status !== 'ok') {
       if (isAuthError(json)) { handleSessionExpired(); return; }
       throw new Error(json.message || 'Bad response');
+    }
+
+    // Re-check after the network round-trip: if the user edited during the pull,
+    // discard the response so we don't trample their unsaved change.
+    if (localStorage.getItem(dirtyKey) === '1') {
+      setSyncStatus('connected', 'Pending local edits — skipped pull');
+      return;
     }
 
     if (json.inventory && json.inventory.length) {
